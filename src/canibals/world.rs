@@ -20,8 +20,7 @@ impl SideState {
 
 impl PartialEq for SideState {
     fn eq(&self, other: &Self) -> bool {
-        self.canibals == other.canibals
-            && self.missionaries == other.missionaries
+        self.canibals == other.canibals && self.missionaries == other.missionaries
     }
 }
 
@@ -35,7 +34,7 @@ impl Display for SideState {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 pub enum BoatSide {
     RightSide,
-    LeftSide
+    LeftSide,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -47,21 +46,27 @@ pub struct WorldState {
 
 /// World state:
 impl WorldState {
-    pub fn new(left_state: SideState, right_state: SideState, boat_side: BoatSide) -> Result<Self, WorldStateError> {
+    pub fn new(
+        left_state: SideState,
+        right_state: SideState,
+        boat_side: BoatSide,
+    ) -> Result<Self, WorldStateError> {
         let total_canibals = left_state.canibals + right_state.canibals;
         let total_missionaries = left_state.missionaries + right_state.missionaries;
 
         match (total_canibals, total_missionaries) {
             (can, _) if can != 3 => Err(WorldStateError::ImpossibleNumberOfCanibals(can)),
-            (_, mis) if mis != 3 => {
-                Err(WorldStateError::ImpossibleNumberOfMissionaries(mis))
-            }
+            (_, mis) if mis != 3 => Err(WorldStateError::ImpossibleNumberOfMissionaries(mis)),
             (_, _) => Ok(Self {
                 left_state,
                 right_state,
-                boat_side
+                boat_side,
             }),
         }
+    }
+
+    pub fn is_solution(&self) -> bool {
+        self.left_state.missionaries == 3
     }
 }
 
@@ -86,10 +91,18 @@ mod test {
 
     #[test]
     fn world_state_new_returns_error_when_state_is_invalid() {
-        let wrong_n_of_misionaries =
-            WorldState::new(SideState::new(0, 0), SideState::new(3, 2), BoatSide::LeftSide).unwrap_err();
-        let wrong_n_of_canibals =
-            WorldState::new(SideState::new(2, 0), SideState::new(3, 1), BoatSide::RightSide).unwrap_err();
+        let wrong_n_of_misionaries = WorldState::new(
+            SideState::new(0, 0),
+            SideState::new(3, 2),
+            BoatSide::LeftSide,
+        )
+        .unwrap_err();
+        let wrong_n_of_canibals = WorldState::new(
+            SideState::new(2, 0),
+            SideState::new(3, 1),
+            BoatSide::RightSide,
+        )
+        .unwrap_err();
 
         assert_eq!(
             wrong_n_of_misionaries,
@@ -103,14 +116,38 @@ mod test {
 
     #[test]
     fn world_new_state_creates_expected_state() {
-        let world_state = WorldState::new(SideState::new(3, 0), SideState::new(0, 3), BoatSide::LeftSide).unwrap();
+        let world_state = WorldState::new(
+            SideState::new(3, 0),
+            SideState::new(0, 3),
+            BoatSide::LeftSide,
+        )
+        .unwrap();
 
         assert_eq!(world_state.left_state.canibals, 3);
         assert_eq!(world_state.left_state.missionaries, 0);
 
         assert_eq!(world_state.right_state.canibals, 0);
         assert_eq!(world_state.right_state.missionaries, 3);
-        
+
         assert_eq!(world_state.boat_side, BoatSide::LeftSide);
+    }
+
+    #[test]
+    fn world_is_solution_returns_expected_response() {
+        let solution_world_state = WorldState::new(
+            SideState::new(1, 3),
+            SideState::new(2, 0),
+            BoatSide::LeftSide,
+        )
+        .unwrap();
+        let non_solution_world_state = WorldState::new(
+            SideState::new(1, 2),
+            SideState::new(2, 1),
+            BoatSide::LeftSide,
+        )
+        .unwrap();
+
+        assert_eq!(solution_world_state.is_solution(), true);
+        assert_eq!(non_solution_world_state.is_solution(), false);
     }
 }
