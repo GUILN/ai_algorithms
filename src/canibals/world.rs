@@ -41,7 +41,7 @@ pub enum BoatSide {
     LeftSide,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize)]
 pub struct WorldState {
     pub left_state: SideState,
     pub right_state: SideState,
@@ -79,17 +79,16 @@ impl WorldState {
     }
 }
 
-impl From<&str> for WorldState {
-    fn from(value: &str) -> Self {
-        let mut left = (0, 0);
-
-        todo!()
-    }
-}
-
 impl PartialEq for WorldState {
     fn eq(&self, other: &Self) -> bool {
         self.left_state == other.left_state && self.right_state == other.right_state
+    }
+}
+
+impl Display for WorldState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let json = serde_json::to_string(self).unwrap_or_default();
+        write!(f, "{}", json)
     }
 }
 
