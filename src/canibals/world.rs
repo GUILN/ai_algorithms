@@ -16,6 +16,10 @@ impl SideState {
             missionaries,
         }
     }
+
+    pub fn cannibal_can_eat_missionary(&self) -> bool {
+        self.canibals > self.missionaries && self.missionaries > 0
+    }
 }
 
 impl PartialEq for SideState {
@@ -67,6 +71,19 @@ impl WorldState {
 
     pub fn is_solution(&self) -> bool {
         self.left_state.missionaries == 3
+    }
+
+    pub fn is_game_over(&self) -> bool {
+        self.left_state.cannibal_can_eat_missionary()
+            || self.right_state.cannibal_can_eat_missionary()
+    }
+}
+
+impl From<&str> for WorldState {
+    fn from(value: &str) -> Self {
+        let mut left = (0, 0);
+
+        todo!()
     }
 }
 
@@ -149,5 +166,51 @@ mod test {
 
         assert_eq!(solution_world_state.is_solution(), true);
         assert_eq!(non_solution_world_state.is_solution(), false);
+    }
+
+    #[test]
+    fn world_is_game_over_returns_expected_response() {
+        let world_game_over_states = vec![
+            WorldState::new(
+                SideState::new(1, 2),
+                SideState::new(2, 1),
+                BoatSide::LeftSide,
+            ),
+            WorldState::new(
+                SideState::new(0, 1),
+                SideState::new(3, 2),
+                BoatSide::LeftSide,
+            ),
+            WorldState::new(
+                SideState::new(2, 1),
+                SideState::new(1, 2),
+                BoatSide::LeftSide,
+            ),
+        ];
+        let world_non_game_over_states = vec![
+            WorldState::new(
+                SideState::new(0, 0),
+                SideState::new(3, 3),
+                BoatSide::RightSide,
+            ),
+            WorldState::new(
+                SideState::new(2, 2),
+                SideState::new(1, 1),
+                BoatSide::LeftSide,
+            ),
+            WorldState::new(
+                SideState::new(0, 3),
+                SideState::new(3, 0),
+                BoatSide::LeftSide,
+            ),
+        ];
+
+        world_game_over_states
+            .into_iter()
+            .for_each(|state_result| assert_eq!(state_result.unwrap().is_game_over(), true));
+
+        world_non_game_over_states
+            .into_iter()
+            .for_each(|state_result| assert_eq!(state_result.unwrap().is_game_over(), false));
     }
 }
