@@ -20,6 +20,23 @@ impl SideState {
     pub fn cannibal_can_eat_missionary(&self) -> bool {
         self.canibals > self.missionaries && self.missionaries > 0
     }
+
+    /// [`get_all_send_combinations`]
+    /// ## Gets all the possible send combinations given the actual number of cannibals and missionaries.
+    /// Returns a tuple containing `(number_of_cannibals, number_of_missionaries)` that can be sent.
+    pub fn get_all_send_combinations(&self) -> Vec<(u8, u8)> {
+        match (self.canibals, self.missionaries) {
+            (c, m) if c >= 2 && m >= 2 => vec![(2, 0), (0, 2), (1, 1), (1, 0), (0, 1)],
+            (c, m) if c >= 2 && m == 1 => vec![(2, 0), (0, 1), (1, 1), (1, 0)],
+            (c, m) if c >= 2 && m == 0 => vec![(2, 0), (1, 0)],
+            (c, m) if c == 1 && m == 1 => vec![(1, 0), (0, 1), (1, 1)],
+            (c, m) if c == 1 && m == 0 => vec![(1, 0)],
+            (c, m) if c == 0 && m == 1 => vec![(0, 1)],
+            (c, m) if c == 0 && m >= 2 => vec![(0, 2), (0, 1)],
+            (c, m) if c == 1 && m >= 2 => vec![(2, 0), (0, 1), (1, 1), (1, 0)],
+            _ => vec![(0, 0)],
+        }
+    }
 }
 
 impl PartialEq for SideState {
@@ -66,6 +83,49 @@ impl WorldState {
                 right_state,
                 boat_side,
             }),
+        }
+    }
+
+    /// [`get_son_states`]
+    /// gets all possible son states
+    pub fn get_son_states(&self) -> Vec<Result<WorldState, WorldStateError>> {
+        match self.boat_side {
+            BoatSide::LeftSide => self
+                .left_state
+                .get_all_send_combinations()
+                .into_iter()
+                .map(|(cann, missi)| {
+                    WorldState::new(
+                        SideState::new(
+                            self.left_state.canibals - cann,
+                            self.left_state.missionaries - missi,
+                        ),
+                        SideState::new(
+                            self.left_state.canibals + cann,
+                            self.left_state.missionaries + missi,
+                        ),
+                        BoatSide::RightSide,
+                    )
+                })
+                .collect(),
+            BoatSide::RightSide => self
+                .right_state
+                .get_all_send_combinations()
+                .into_iter()
+                .map(|(cann, missi)| {
+                    WorldState::new(
+                        SideState::new(
+                            self.left_state.canibals + cann,
+                            self.left_state.missionaries + missi,
+                        ),
+                        SideState::new(
+                            self.left_state.canibals - cann,
+                            self.left_state.missionaries - missi,
+                        ),
+                        BoatSide::LeftSide,
+                    )
+                })
+                .collect(),
         }
     }
 
