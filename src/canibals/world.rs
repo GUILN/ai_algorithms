@@ -5,27 +5,27 @@ use thiserror::Error;
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 pub struct SideState {
-    pub canibals: u8,
+    pub cannibals: u8,
     pub missionaries: u8,
 }
 
 impl SideState {
-    pub fn new(canibals: u8, missionaries: u8) -> Self {
+    pub fn new(cannibals: u8, missionaries: u8) -> Self {
         Self {
-            canibals,
+            cannibals,
             missionaries,
         }
     }
 
     pub fn cannibal_can_eat_missionary(&self) -> bool {
-        self.canibals > self.missionaries && self.missionaries > 0
+        self.cannibals > self.missionaries && self.missionaries > 0
     }
 
     /// [`get_all_send_combinations`]
     /// ## Gets all the possible send combinations given the actual number of cannibals and missionaries.
     /// Returns a tuple containing `(number_of_cannibals, number_of_missionaries)` that can be sent.
     pub fn get_all_send_combinations(&self) -> Vec<(u8, u8)> {
-        match (self.canibals, self.missionaries) {
+        match (self.cannibals, self.missionaries) {
             (c, m) if c >= 2 && m >= 2 => vec![(2, 0), (0, 2), (1, 1), (1, 0), (0, 1)],
             (c, m) if c >= 2 && m == 1 => vec![(2, 0), (0, 1), (1, 1), (1, 0)],
             (c, m) if c >= 2 && m == 0 => vec![(2, 0), (1, 0)],
@@ -41,7 +41,7 @@ impl SideState {
 
 impl PartialEq for SideState {
     fn eq(&self, other: &Self) -> bool {
-        self.canibals == other.canibals && self.missionaries == other.missionaries
+        self.cannibals == other.cannibals && self.missionaries == other.missionaries
     }
 }
 
@@ -72,11 +72,11 @@ impl WorldState {
         right_state: SideState,
         boat_side: BoatSide,
     ) -> Result<Self, WorldStateError> {
-        let total_canibals = left_state.canibals + right_state.canibals;
+        let total_cannibals = left_state.cannibals + right_state.cannibals;
         let total_missionaries = left_state.missionaries + right_state.missionaries;
 
-        match (total_canibals, total_missionaries) {
-            (can, _) if can != 3 => Err(WorldStateError::ImpossibleNumberOfCanibals(can)),
+        match (total_cannibals, total_missionaries) {
+            (can, _) if can != 3 => Err(WorldStateError::ImpossibleNumberOfCannibals(can)),
             (_, mis) if mis != 3 => Err(WorldStateError::ImpossibleNumberOfMissionaries(mis)),
             (_, _) => Ok(Self {
                 left_state,
@@ -97,11 +97,11 @@ impl WorldState {
                 .map(|(cann, missi)| {
                     WorldState::new(
                         SideState::new(
-                            self.left_state.canibals - cann,
+                            self.left_state.cannibals - cann,
                             self.left_state.missionaries - missi,
                         ),
                         SideState::new(
-                            self.left_state.canibals + cann,
+                            self.left_state.cannibals + cann,
                             self.left_state.missionaries + missi,
                         ),
                         BoatSide::RightSide,
@@ -115,11 +115,11 @@ impl WorldState {
                 .map(|(cann, missi)| {
                     WorldState::new(
                         SideState::new(
-                            self.left_state.canibals + cann,
+                            self.left_state.cannibals + cann,
                             self.left_state.missionaries + missi,
                         ),
                         SideState::new(
-                            self.left_state.canibals - cann,
+                            self.left_state.cannibals - cann,
                             self.left_state.missionaries - missi,
                         ),
                         BoatSide::LeftSide,
@@ -157,8 +157,8 @@ impl Display for WorldState {
 pub enum WorldStateError {
     #[error("Impossible number of missionaries")]
     ImpossibleNumberOfMissionaries(u8),
-    #[error("Impossible number of canibals")]
-    ImpossibleNumberOfCanibals(u8),
+    #[error("Impossible number of cannibals")]
+    ImpossibleNumberOfCannibals(u8),
 }
 
 #[cfg(test)]
@@ -167,13 +167,13 @@ mod test {
 
     #[test]
     fn world_state_new_returns_error_when_state_is_invalid() {
-        let wrong_n_of_misionaries = WorldState::new(
+        let wrong_n_of_missionaries = WorldState::new(
             SideState::new(0, 0),
             SideState::new(3, 2),
             BoatSide::LeftSide,
         )
         .unwrap_err();
-        let wrong_n_of_canibals = WorldState::new(
+        let wrong_n_of_cannibals = WorldState::new(
             SideState::new(2, 0),
             SideState::new(3, 1),
             BoatSide::RightSide,
@@ -181,12 +181,12 @@ mod test {
         .unwrap_err();
 
         assert_eq!(
-            wrong_n_of_misionaries,
+            wrong_n_of_missionaries,
             WorldStateError::ImpossibleNumberOfMissionaries(2)
         );
         assert_eq!(
-            wrong_n_of_canibals,
-            WorldStateError::ImpossibleNumberOfCanibals(5)
+            wrong_n_of_cannibals,
+            WorldStateError::ImpossibleNumberOfCannibals(5)
         );
     }
 
@@ -199,10 +199,10 @@ mod test {
         )
         .unwrap();
 
-        assert_eq!(world_state.left_state.canibals, 3);
+        assert_eq!(world_state.left_state.cannibals, 3);
         assert_eq!(world_state.left_state.missionaries, 0);
 
-        assert_eq!(world_state.right_state.canibals, 0);
+        assert_eq!(world_state.right_state.cannibals, 0);
         assert_eq!(world_state.right_state.missionaries, 3);
 
         assert_eq!(world_state.boat_side, BoatSide::LeftSide);
@@ -271,5 +271,10 @@ mod test {
         world_non_game_over_states
             .into_iter()
             .for_each(|state_result| assert_eq!(state_result.unwrap().is_game_over(), false));
+    }
+
+    #[test]
+    fn world_get_son_states_returns_expected_states() {
+
     }
 }
