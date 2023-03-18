@@ -50,3 +50,29 @@ impl Display for SideState {
         write!(f, "{}", json)
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn side_state_get_all_send_combinations_generates_expected_combinations() {
+        let side_state = SideState::new(3, 3);
+        let expected_combinations: Vec<(u8, u8)> = vec![(2, 0), (0, 2), (1, 1), (1, 0), (0, 1)];
+
+        let combinations = side_state.get_all_send_combinations();
+
+        let expected_combinations_count = expected_combinations.len();
+        let actual_combinations_count = combinations.len();
+        let matching_combinations_count = combinations
+            .iter()
+            .zip(expected_combinations)
+            .filter(|&(a, b)| a == &b)
+            .count();
+
+        let combination_matches = (expected_combinations_count == actual_combinations_count
+            && expected_combinations_count == matching_combinations_count);
+
+        assert!(combination_matches, "Combinations count did not matched")
+    }
+}
