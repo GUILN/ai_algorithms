@@ -1,61 +1,27 @@
-use std::fmt::Display;
+use super::SideState;
+use std::{fmt::Display, num::ParseIntError};
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-
-#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
-pub struct SideState {
-    pub cannibals: u8,
-    pub missionaries: u8,
-}
-
-impl SideState {
-    pub fn new(cannibals: u8, missionaries: u8) -> Self {
-        Self {
-            cannibals,
-            missionaries,
-        }
-    }
-
-    pub fn cannibal_can_eat_missionary(&self) -> bool {
-        self.cannibals > self.missionaries && self.missionaries > 0
-    }
-
-    /// [`get_all_send_combinations`]
-    /// ## Gets all the possible send combinations given the actual number of cannibals and missionaries.
-    /// Returns a tuple containing `(number_of_cannibals, number_of_missionaries)` that can be sent.
-    pub fn get_all_send_combinations(&self) -> Vec<(u8, u8)> {
-        match (self.cannibals, self.missionaries) {
-            (c, m) if c >= 2 && m >= 2 => vec![(2, 0), (0, 2), (1, 1), (1, 0), (0, 1)],
-            (c, m) if c >= 2 && m == 1 => vec![(2, 0), (0, 1), (1, 1), (1, 0)],
-            (c, m) if c >= 2 && m == 0 => vec![(2, 0), (1, 0)],
-            (c, m) if c == 1 && m == 1 => vec![(1, 0), (0, 1), (1, 1)],
-            (c, m) if c == 1 && m == 0 => vec![(1, 0)],
-            (c, m) if c == 0 && m == 1 => vec![(0, 1)],
-            (c, m) if c == 0 && m >= 2 => vec![(0, 2), (0, 1)],
-            (c, m) if c == 1 && m >= 2 => vec![(2, 0), (0, 1), (1, 1), (1, 0)],
-            _ => vec![(0, 0)],
-        }
-    }
-}
-
-impl PartialEq for SideState {
-    fn eq(&self, other: &Self) -> bool {
-        self.cannibals == other.cannibals && self.missionaries == other.missionaries
-    }
-}
-
-impl Display for SideState {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let json = serde_json::to_string(self).unwrap_or_default();
-        write!(f, "{}", json)
-    }
-}
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 pub enum BoatSide {
     RightSide,
     LeftSide,
+}
+
+impl TryFrom<&str> for BoatSide {
+    type Error = WorldStateError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value.trim() {
+            "right" => Ok(Self::RightSide),
+            "left" => Ok(Self::LeftSide),
+            _ => Err(WorldStateError::ParseFromStringError(
+                "Invalid Value For BoatSide".into(),
+            )),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, Serialize)]
@@ -139,6 +105,47 @@ impl WorldState {
     }
 }
 
+/// [TryFrom<&str>]
+/// This TryFrom<&str> accepts the following format:
+/// `"u8 u8 u8 u8 left | right"`
+/// Meaning:
+/// `"n_cannibals_left n_missionaries_left n_cannibals_right n_missionaries_right boat_side"`
+/// # Examples:
+/// `"1 1 2 2 right"`
+/// means:
+/// * left: 1 cannibal and 1 missionary
+/// * right: 2 cannibals and 2 missionaries and the boat
+/// `"1 0 2 3 left"`
+/// means:
+/// * left: 1 cannibal and 0 missionary and the boat
+/// * right: 2 cannibals and 3 missionaries
+impl TryFrom<&str> for WorldState {
+    type Error = WorldStateError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        let v = value.split(" ").collect::<Vec<&str>>();
+        if v.len() < 5 {
+            return Err(WorldStateError::ParseFromStringError(
+                "Non sufficient number of args".into(),
+            ));
+        }
+        let (l_c, l_m, r_c, r_m, b) = (
+            v[0].trim(),
+            v[1].trim(),
+            v[2].trim(),
+            v[3].trim(),
+            v[4].trim(),
+        );
+        let world_state = WorldState::new(
+            SideState::new(l_c.parse()?, l_m.parse()?),
+            SideState::new(r_c.parse()?, r_m.parse()?),
+            b.try_into()?,
+        )?;
+
+        Ok(world_state)
+    }
+}
+
 impl PartialEq for WorldState {
     fn eq(&self, other: &Self) -> bool {
         self.left_state == other.left_state && self.right_state == other.right_state
@@ -159,6 +166,14 @@ pub enum WorldStateError {
     ImpossibleNumberOfMissionaries(u8),
     #[error("Impossible number of cannibals")]
     ImpossibleNumberOfCannibals(u8),
+    #[error("Error when trying to parse from WorldState string")]
+    ParseFromStringError(String),
+}
+
+impl From<ParseIntError> for WorldStateError {
+    fn from(_: ParseIntError) -> Self {
+        Self::ParseFromStringError("Error while trying to parse a number from string".into())
+    }
 }
 
 #[cfg(test)]
@@ -274,7 +289,36 @@ mod test {
     }
 
     #[test]
-    fn world_get_son_states_returns_expected_states() {
+    fn world_tryfrom_str_trait_works_as_expected() {
+        let cases = vec![
+            ("3 0 0 3 left", 3, 0, 0, 3, BoatSide::LeftSide),
+            ("1 2 2 1 right", 1, 2, 2, 1, BoatSide::RightSide),
+            ("0 0 3 3 right", 0, 0, 3, 3, BoatSide::RightSide),
+        ];
 
+        for case in cases {
+            let (world_state_str, l_c, l_m, r_c, r_m, b_s) = case;
+            let world_state_result: Result<WorldState, WorldStateError> =
+                world_state_str.try_into();
+            if let Ok(ws) = world_state_result {
+                assert_eq!(ws.left_state.cannibals, l_c);
+                assert_eq!(ws.left_state.missionaries, l_m);
+                assert_eq!(ws.right_state.cannibals, r_c);
+                assert_eq!(ws.right_state.missionaries, r_m);
+                assert_eq!(ws.boat_side, b_s);
+            } else {
+                panic!("world state should not have failed")
+            }
+        }
+    }
+
+    #[test]
+    fn world_get_son_states_returns_expected_states() {
+        let solution_world_state = WorldState::new(
+            SideState::new(1, 3),
+            SideState::new(2, 0),
+            BoatSide::LeftSide,
+        )
+        .unwrap();
     }
 }
