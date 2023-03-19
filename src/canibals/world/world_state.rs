@@ -69,8 +69,8 @@ impl WorldState {
                             self.left_state.missionaries - missi,
                         ),
                         SideState::new(
-                            self.left_state.cannibals + cann,
-                            self.left_state.missionaries + missi,
+                            self.right_state.cannibals + cann,
+                            self.right_state.missionaries + missi,
                         ),
                         BoatSide::RightSide,
                     )
@@ -87,8 +87,8 @@ impl WorldState {
                             self.left_state.missionaries + missi,
                         ),
                         SideState::new(
-                            self.left_state.cannibals - cann,
-                            self.left_state.missionaries - missi,
+                            self.right_state.cannibals - cann,
+                            self.right_state.missionaries - missi,
                         ),
                         BoatSide::LeftSide,
                     )
