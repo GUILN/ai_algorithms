@@ -70,8 +70,8 @@ mod test {
             .filter(|&(a, b)| a == &b)
             .count();
 
-        let combination_matches = (expected_combinations_count == actual_combinations_count
-            && expected_combinations_count == matching_combinations_count);
+        let combination_matches = expected_combinations_count == actual_combinations_count
+            && expected_combinations_count == matching_combinations_count;
 
         assert!(combination_matches, "Combinations count did not matched")
     }
