@@ -64,11 +64,17 @@ mod test {
 
         let expected_combinations_count = expected_combinations.len();
         let actual_combinations_count = combinations.len();
-        let matching_combinations_count = combinations
-            .iter()
-            .zip(expected_combinations)
-            .filter(|&(a, b)| a == &b)
-            .count();
+        let mut matching_combinations_count = 0;
+
+        expected_combinations.into_iter().for_each(|expected_comb| {
+            assert!(
+                combinations.contains(&expected_comb),
+                "Expected combination: ({}, {}) is not contained in generated combinations",
+                expected_comb.0,
+                expected_comb.1
+            );
+            matching_combinations_count += 1;
+        });
 
         let combination_matches = expected_combinations_count == actual_combinations_count
             && expected_combinations_count == matching_combinations_count;
