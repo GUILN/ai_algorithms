@@ -4,7 +4,8 @@ use std::{fmt::Display, num::ParseIntError};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-type WorldStateResult = Result<WorldState, WorldStateError>;
+pub type WorldStateResult<'a> = Result<WorldState<'a>, WorldStateError>;
+pub type WorldStateBacktrack<'a> = (Option<&'a WorldState<'a>>, String);
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 pub enum BoatSide {
@@ -35,19 +36,21 @@ impl Into<String> for BoatSide {
     }
 }
 
-#[derive(Debug, Clone, Copy, Serialize)]
-pub struct WorldState {
+#[derive(Debug, Clone, Serialize)]
+pub struct WorldState<'a> {
     pub left_state: SideState,
     pub right_state: SideState,
     pub boat_side: BoatSide,
+    backtrack: WorldStateBacktrack<'a>,
 }
 
 /// World state:
-impl WorldState {
+impl<'a> WorldState<'a> {
     pub fn new(
         left_state: SideState,
         right_state: SideState,
         boat_side: BoatSide,
+        backtrack: WorldStateBacktrack<'a>,
     ) -> Result<Self, WorldStateError> {
         let total_cannibals = left_state.cannibals + right_state.cannibals;
         let total_missionaries = left_state.missionaries + right_state.missionaries;
@@ -59,20 +62,25 @@ impl WorldState {
                 left_state,
                 right_state,
                 boat_side,
+                backtrack: backtrack,
             }),
         }
     }
 
     /// [`get_son_states`]
     /// gets all possible son states
-    pub fn get_son_states(&self) -> Vec<WorldStateResult> {
+    pub fn get_child_states(&self) -> Vec<WorldStateResult> {
         match self.boat_side {
             BoatSide::LeftSide => self
                 .left_state
                 .get_all_send_combinations()
                 .into_iter()
                 .map(|(cann, missi)| {
-                    WorldState::new(
+                    let mov = format!(
+                        "send {} cannibals and {} missionaries to the right side",
+                        cann, missi
+                    );
+                    return WorldState::new(
                         SideState::new(
                             self.left_state.cannibals - cann,
                             self.left_state.missionaries - missi,
@@ -82,7 +90,8 @@ impl WorldState {
                             self.right_state.missionaries + missi,
                         ),
                         BoatSide::RightSide,
-                    )
+                        (Some(self), mov),
+                    );
                 })
                 .collect(),
             BoatSide::RightSide => self
@@ -90,7 +99,11 @@ impl WorldState {
                 .get_all_send_combinations()
                 .into_iter()
                 .map(|(cann, missi)| {
-                    WorldState::new(
+                    let mov = format!(
+                        "send {} cannibals and {} missionaries to the left side",
+                        cann, missi
+                    );
+                    return WorldState::new(
                         SideState::new(
                             self.left_state.cannibals + cann,
                             self.left_state.missionaries + missi,
@@ -100,10 +113,36 @@ impl WorldState {
                             self.right_state.missionaries - missi,
                         ),
                         BoatSide::LeftSide,
-                    )
+                        (Some(self), mov),
+                    );
                 })
                 .collect(),
         }
+    }
+
+    /// [`get_step_by_step`]
+    ///
+    /// Returns the step by step of how to reach to this state.
+    /// Used to get the final answer.
+    pub fn get_step_by_step(&self) -> String {
+        if let Some(parent) = self.backtrack.0 {
+            let reason = self.backtrack.1.as_str();
+            return reason.to_string() + "|" + parent.get_step_by_step().as_str();
+        }
+
+        format!("{}", self)
+    }
+
+    pub fn get_step_by_step_vec(&self) -> Vec<String> {
+        let step_by_step_string = self.get_step_by_step();
+        let mut step_by_step_vec = step_by_step_string.split("|").collect::<Vec<&str>>();
+        step_by_step_vec.reverse();
+
+        let step_by_step = step_by_step_vec
+            .into_iter()
+            .map(|step_str| step_str.to_string())
+            .collect::<Vec<String>>();
+        step_by_step
     }
 
     pub fn is_solution(&self) -> bool {
@@ -130,7 +169,7 @@ impl WorldState {
 /// means:
 /// * left: 1 cannibal and 0 missionary and the boat
 /// * right: 2 cannibals and 3 missionaries
-impl TryFrom<&str> for WorldState {
+impl<'a> TryFrom<&str> for WorldState<'a> {
     type Error = WorldStateError;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
@@ -151,13 +190,14 @@ impl TryFrom<&str> for WorldState {
             SideState::new(l_c.parse()?, l_m.parse()?),
             SideState::new(r_c.parse()?, r_m.parse()?),
             b.try_into()?,
+            (None, "root state".to_string()),
         )?;
 
         Ok(world_state)
     }
 }
 
-impl Into<String> for WorldState {
+impl<'a> Into<String> for WorldState<'a> {
     fn into(self) -> String {
         let boat_string: String = self.boat_side.into();
         format!(
@@ -172,7 +212,7 @@ impl Into<String> for WorldState {
     }
 }
 
-impl PartialEq for WorldState {
+impl<'a> PartialEq for WorldState<'a> {
     fn eq(&self, other: &Self) -> bool {
         self.left_state == other.left_state
             && self.right_state == other.right_state
@@ -180,7 +220,7 @@ impl PartialEq for WorldState {
     }
 }
 
-impl Display for WorldState {
+impl<'a> Display for WorldState<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let json = serde_json::to_string(self).unwrap_or_default();
         write!(f, "{}", json)
@@ -214,12 +254,14 @@ mod test {
             SideState::new(0, 0),
             SideState::new(3, 2),
             BoatSide::LeftSide,
+            (None, "root state".to_string()),
         )
         .unwrap_err();
         let wrong_n_of_cannibals = WorldState::new(
             SideState::new(2, 0),
             SideState::new(3, 1),
             BoatSide::RightSide,
+            (None, "root state".to_string()),
         )
         .unwrap_err();
 
@@ -239,6 +281,7 @@ mod test {
             SideState::new(3, 0),
             SideState::new(0, 3),
             BoatSide::LeftSide,
+            (None, "root state".to_string()),
         )
         .unwrap();
 
@@ -257,12 +300,14 @@ mod test {
             SideState::new(1, 3),
             SideState::new(2, 0),
             BoatSide::LeftSide,
+            (None, "root state".to_string()),
         )
         .unwrap();
         let non_solution_world_state = WorldState::new(
             SideState::new(1, 2),
             SideState::new(2, 1),
             BoatSide::LeftSide,
+            (None, "root state".to_string()),
         )
         .unwrap();
 
@@ -277,16 +322,19 @@ mod test {
                 SideState::new(1, 2),
                 SideState::new(2, 1),
                 BoatSide::LeftSide,
+                (None, "root state".to_string()),
             ),
             WorldState::new(
                 SideState::new(0, 1),
                 SideState::new(3, 2),
                 BoatSide::LeftSide,
+                (None, "root state".to_string()),
             ),
             WorldState::new(
                 SideState::new(2, 1),
                 SideState::new(1, 2),
                 BoatSide::LeftSide,
+                (None, "root state".to_string()),
             ),
         ];
         let world_non_game_over_states = vec![
@@ -294,16 +342,19 @@ mod test {
                 SideState::new(0, 0),
                 SideState::new(3, 3),
                 BoatSide::RightSide,
+                (None, "root state".to_string()),
             ),
             WorldState::new(
                 SideState::new(2, 2),
                 SideState::new(1, 1),
                 BoatSide::LeftSide,
+                (None, "root state".to_string()),
             ),
             WorldState::new(
                 SideState::new(0, 3),
                 SideState::new(3, 0),
                 BoatSide::LeftSide,
+                (None, "root state".to_string()),
             ),
         ];
 
@@ -361,7 +412,7 @@ mod test {
             .collect::<Vec<WorldState>>();
 
         let actual_son_states = w_s
-            .get_son_states()
+            .get_child_states()
             .into_iter()
             .map(|state_result| {
                 state_result.expect("Get son states method generated faulty state.")
@@ -374,11 +425,11 @@ mod test {
 
         // let matching_states_count = expected_son_state
         expected_son_state.into_iter().for_each(|expected_state| {
-            let expected_state_str: String = expected_state.into();
+            // let expected_state_str: String = expected_state.into();
             assert!(
                 actual_son_states.contains(&expected_state),
                 "Expected state: [{}] was not generated",
-                expected_state_str
+                expected_state.to_string()
             );
             matching_states_count += 1;
         });
