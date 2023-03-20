@@ -243,10 +243,78 @@ impl PartialEq for WorldState {
     }
 }
 
+impl PartialOrd for WorldState {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        match (self.get_heuristic(), other.get_heuristic()) {
+            (this_heuristic, other_heuristic) if this_heuristic == other_heuristic => {
+                Some(std::cmp::Ordering::Equal)
+            }
+            (this_heuristic, other_heuristic) if this_heuristic > other_heuristic => {
+                Some(std::cmp::Ordering::Greater)
+            }
+            _ => Some(std::cmp::Ordering::Less),
+        }
+    }
+}
+
 impl Display for WorldState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let json = serde_json::to_string(self).unwrap_or_default();
         write!(f, "{}", json)
+    }
+}
+
+/// [`WorldStateHeapWrapper`]
+/// This struct only purpose is to allow to organize [`WorldState`] struct
+/// into `min-heap`, this is needed in order organize "next nodes to visit"
+/// using heuristic for `greedy` algorithms.
+#[derive(Debug)]
+pub struct WorldStateHeapWrapper<'a> {
+    world_state: &'a WorldState,
+}
+
+impl<'a> WorldStateHeapWrapper<'a> {
+    pub fn new(world_state: &'a WorldState) -> Self {
+        Self { world_state }
+    }
+    pub fn get_world_state(&self) -> &'a WorldState {
+        self.world_state
+    }
+}
+
+impl<'a> PartialEq for WorldStateHeapWrapper<'a> {
+    fn eq(&self, other: &Self) -> bool {
+        self.world_state.get_heuristic() == other.world_state.get_heuristic()
+    }
+}
+
+impl<'a> Eq for WorldStateHeapWrapper<'a> {
+    fn assert_receiver_is_total_eq(&self) {}
+}
+
+impl<'a> PartialOrd for WorldStateHeapWrapper<'a> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        let heuristics = (
+            self.world_state.get_heuristic(),
+            other.world_state.get_heuristic(),
+        );
+
+        match heuristics {
+            (my_heuristic, other_heuristic) if my_heuristic > other_heuristic => {
+                Some(std::cmp::Ordering::Greater)
+            }
+            (my_heuristic, other_heuristic) if my_heuristic == other_heuristic => {
+                Some(std::cmp::Ordering::Equal)
+            }
+            _ => Some(std::cmp::Ordering::Less),
+        }
+    }
+}
+
+impl<'a> Ord for WorldStateHeapWrapper<'a> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.partial_cmp(other)
+            .expect("PartialOrd implementation for WorldStateHeapWrapper should not return None!")
     }
 }
 
@@ -268,7 +336,7 @@ impl From<ParseIntError> for WorldStateError {
 }
 
 #[cfg(test)]
-mod test {
+mod world_state_test {
     use super::*;
 
     #[test]
@@ -465,5 +533,51 @@ mod test {
             actual_son_states_count, matching_states_count,
             "Actual states count should be equal to the matching states count"
         );
+    }
+}
+
+#[cfg(test)]
+mod world_state_heap_wrapper_test {
+    use super::*;
+    use std::cmp::Reverse;
+    use std::collections::BinaryHeap;
+
+    #[test]
+    fn test_world_state_heap_wrapper_maintains_expected_order() {
+        let world_state_2: WorldStateResult = "1 1 2 2 right".try_into();
+        let world_state_1: WorldStateResult = "0 0 3 3 right".try_into();
+        let world_state_5: WorldStateResult = "0 3 3 0 right".try_into();
+        let world_state_3: WorldStateResult = "2 2 1 1 right".try_into();
+        let world_state_4: WorldStateResult = "0 3 3 0 right".try_into();
+        let (world_state_1, world_state_2, world_state_3, world_state_4, world_state_5) = (
+            world_state_1.unwrap(),
+            world_state_2.unwrap(),
+            world_state_3.unwrap(),
+            world_state_4.unwrap(),
+            world_state_5.unwrap(),
+        );
+
+        let mut heap: BinaryHeap<Reverse<WorldStateHeapWrapper>> = BinaryHeap::new();
+
+        heap.push(Reverse(WorldStateHeapWrapper::new(&world_state_1)));
+        heap.push(Reverse(WorldStateHeapWrapper::new(&world_state_2)));
+        heap.push(Reverse(WorldStateHeapWrapper::new(&world_state_5)));
+        heap.push(Reverse(WorldStateHeapWrapper::new(&world_state_3)));
+        heap.push(Reverse(WorldStateHeapWrapper::new(&world_state_4)));
+
+        let expected_order_vec = vec![
+            "0 3 3 0 right".to_string(),
+            "0 3 3 0 right".to_string(),
+            "2 2 1 1 right".to_string(),
+            "1 1 2 2 right".to_string(),
+            "0 0 3 3 right".to_string(),
+        ];
+
+        expected_order_vec.into_iter().for_each(|expected| {
+            if let Some(Reverse(ws_wrapper)) = heap.pop() {
+                let actual: String = ws_wrapper.get_world_state().into();
+                assert_eq!(expected, actual);
+            }
+        });
     }
 }
