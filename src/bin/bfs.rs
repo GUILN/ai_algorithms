@@ -1,9 +1,9 @@
 use std::collections::{HashMap, VecDeque};
 use std::error::Error;
 
-use crate::{WorldState, WorldStateResult};
+use algoritmos_rust::{WorldState, WorldStateResult};
 
-pub fn run_bfs() -> Result<(), Box<dyn Error>> {
+pub fn main() -> Result<(), Box<dyn Error>> {
     const INITIAL_STATE: &str = "0 0 3 3 right";
     let initial_state: WorldStateResult = WorldState::try_from(INITIAL_STATE);
     let initial_state = initial_state.expect("faulty state");
