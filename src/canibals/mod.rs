@@ -1,5 +1,5 @@
-pub mod solution_bfs;
 pub mod world;
+pub mod solutions;
 
-pub use solution_bfs::*;
 pub use world::*;
+pub use solutions::*;
