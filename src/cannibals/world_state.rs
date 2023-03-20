@@ -119,6 +119,29 @@ impl WorldState {
         }
     }
 
+    /// [`heuristic`]
+    /// Returns a number that represents how far this state is from the goal state.
+    /// The lower the value, the closest this state is from the goal state.
+    /// # Example
+    /// ```
+    /// # use algoritmos_rust::cannibals::*;
+    /// let state: WorldStateResult = "0 0 3 3 right".try_into();
+    /// let state = state.unwrap();
+    /// assert_eq!(state.get_heuristic(), 3)
+    /// ```
+    ///
+    /// # Example - Comparison
+    /// ```
+    /// # use algoritmos_rust::cannibals::*;
+    /// let state_1: WorldStateResult = "0 0 3 3 right".try_into();
+    /// let state_2: WorldStateResult = "1 1 2 2 right".try_into();
+    /// let (state_1, state_2) = (state_1.unwrap(), state_2.unwrap());
+    /// assert!(state_2.get_heuristic() < state_1.get_heuristic(), "expect state 2 to be closest to the goal state.");
+    /// ```
+    pub fn get_heuristic(&self) -> u8 {
+        3 - self.left_state.missionaries
+    }
+
     /// [`get_step_by_step`]
     ///
     /// Returns the step by step of how to reach to this state.
@@ -212,7 +235,7 @@ impl Into<String> for &WorldState {
     }
 }
 
-impl<'a> PartialEq for WorldState {
+impl PartialEq for WorldState {
     fn eq(&self, other: &Self) -> bool {
         self.left_state == other.left_state
             && self.right_state == other.right_state
