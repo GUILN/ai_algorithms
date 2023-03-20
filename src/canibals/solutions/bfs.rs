@@ -1,4 +1,4 @@
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::error::Error;
 
 use crate::{WorldState, WorldStateResult};
@@ -7,11 +7,11 @@ pub fn run_bfs() -> Result<(), Box<dyn Error>> {
     const INITIAL_STATE: &str = "0 0 3 3 right";
     let initial_state: WorldStateResult = WorldState::try_from(INITIAL_STATE);
     let initial_state = initial_state.expect("faulty state");
+    let mut already_queued_states: HashMap<String, bool> = HashMap::new();
 
     let mut next_states_to_visit: VecDeque<WorldState> = VecDeque::new();
-    let mut queued_states: Vec<String> = Vec::new();
 
-    queued_states.push(INITIAL_STATE.to_string());
+    already_queued_states.insert(INITIAL_STATE.to_string(), true);
 
     initial_state
         .get_child_states()
@@ -21,7 +21,7 @@ pub fn run_bfs() -> Result<(), Box<dyn Error>> {
             let ref_world_state_result = &world_state_result;
             let world_state_str_representation: String = ref_world_state_result.into();
             next_states_to_visit.push_back(world_state_result);
-            queued_states.push(world_state_str_representation);
+            already_queued_states.insert(world_state_str_representation, true);
         });
 
     let solution_state: Option<WorldState> = loop {
@@ -37,13 +37,11 @@ pub fn run_bfs() -> Result<(), Box<dyn Error>> {
                     let world_state_str_representation: String = ref_child_w_state.into();
 
                     // Checks if the world state is already in the queue to be visited.
-                    if queued_states.contains(&world_state_str_representation) {
-                        continue;
-                    } else if ref_child_w_state.is_game_over() {
+                    if already_queued_states.contains_key(&world_state_str_representation) {
                         continue;
                     }
                     next_states_to_visit.push_back(child_world_state);
-                    queued_states.push(world_state_str_representation);
+                    already_queued_states.insert(world_state_str_representation, true);
                 }
             }
         } else {
