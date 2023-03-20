@@ -3,7 +3,7 @@ use std::error::Error;
 
 use crate::{WorldState, WorldStateResult};
 
-pub fn run_bfs() -> Result<(), Box<dyn Error>> {
+pub fn run_dfs() -> Result<(), Box<dyn Error>> {
     const INITIAL_STATE: &str = "0 0 3 3 right";
     let initial_state: WorldStateResult = WorldState::try_from(INITIAL_STATE);
     let initial_state = initial_state.expect("faulty state");
@@ -20,7 +20,7 @@ pub fn run_bfs() -> Result<(), Box<dyn Error>> {
             let world_state_result = world_state_result.expect("expects non faulty state");
             let ref_world_state_result = &world_state_result;
             let world_state_str_representation: String = ref_world_state_result.into();
-            next_states_to_visit.push_back(world_state_result);
+            next_states_to_visit.push_front(world_state_result);
             queued_states.push(world_state_str_representation);
         });
 
@@ -42,7 +42,7 @@ pub fn run_bfs() -> Result<(), Box<dyn Error>> {
                     } else if ref_child_w_state.is_game_over() {
                         continue;
                     }
-                    next_states_to_visit.push_back(child_world_state);
+                    next_states_to_visit.push_front(child_world_state);
                     queued_states.push(world_state_str_representation);
                 }
             }
