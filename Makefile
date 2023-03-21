@@ -13,3 +13,7 @@ run_dfs:
 
 run_greedy_best_first_search:
 	cargo run --bin greedy_best_first_search
+
+run_a_star:
+	cargo run --bin a_star
+
