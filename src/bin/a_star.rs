@@ -41,7 +41,7 @@ pub fn main() -> Result<(), Box<dyn Error>> {
 
     let solution_state: Option<Rc<WorldState>> = loop {
         if let Some(Reverse(state_to_visit)) = next_states_to_visit_heap.pop() {
-            visited_states +=1;
+            visited_states += 1;
             let state_to_visit = state_to_visit.get_world_state();
             if state_to_visit.is_solution() {
                 break Some(state_to_visit);

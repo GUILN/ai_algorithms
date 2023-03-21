@@ -173,7 +173,7 @@ impl WorldState {
     }
 
     pub fn is_solution(&self) -> bool {
-        self.left_state.missionaries == 3
+        self.left_state.missionaries == 3 && !self.is_game_over()
     }
 
     pub fn is_game_over(&self) -> bool {
@@ -287,7 +287,10 @@ pub struct WorldStateHeapWrapper {
 }
 
 impl WorldStateHeapWrapper {
-    pub fn new(world_state: Rc<WorldState>, cost_function: WorldStateWrapperCostFunctionType) -> Self {
+    pub fn new(
+        world_state: Rc<WorldState>,
+        cost_function: WorldStateWrapperCostFunctionType,
+    ) -> Self {
         Self {
             world_state,
             cost_function,
@@ -299,7 +302,9 @@ impl WorldStateHeapWrapper {
     fn get_cost(&self) -> u8 {
         match self.cost_function {
             WorldStateWrapperCostFunctionType::OnlyHeuristic => self.world_state.get_heuristic(),
-            WorldStateWrapperCostFunctionType::HeuristicPlusBranchCost => self.world_state.get_heuristic() + self.world_state.get_branch_cost(),
+            WorldStateWrapperCostFunctionType::HeuristicPlusBranchCost => {
+                self.world_state.get_heuristic() + self.world_state.get_branch_cost()
+            }
         }
     }
 }
@@ -316,10 +321,7 @@ impl Eq for WorldStateHeapWrapper {
 
 impl PartialOrd for WorldStateHeapWrapper {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        let heuristics = (
-            self.get_cost(),
-            other.get_cost(),
-        );
+        let heuristics = (self.get_cost(), other.get_cost());
 
         match heuristics {
             (my_heuristic, other_heuristic) if my_heuristic > other_heuristic => {

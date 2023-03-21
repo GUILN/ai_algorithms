@@ -9,7 +9,7 @@ use algoritmos_rust::{
 
 pub fn main() -> Result<(), Box<dyn Error>> {
     const INITIAL_STATE: &str = "0 0 3 3 right";
-    
+
     let initial_state: WorldStateResult = WorldState::try_from(INITIAL_STATE);
     let initial_state = initial_state.expect("faulty state");
     let mut already_queued_states: HashMap<String, bool> = HashMap::new();
