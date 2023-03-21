@@ -269,30 +269,30 @@ impl Display for WorldState {
 /// into `min-heap`, this is needed in order organize "next nodes to visit"
 /// using heuristic for `greedy` algorithms.
 #[derive(Debug)]
-pub struct WorldStateHeapWrapper<'a> {
-    world_state: &'a WorldState,
+pub struct WorldStateHeapWrapper {
+    world_state: Rc<WorldState>,
 }
 
-impl<'a> WorldStateHeapWrapper<'a> {
-    pub fn new(world_state: &'a WorldState) -> Self {
+impl WorldStateHeapWrapper {
+    pub fn new(world_state: Rc<WorldState>) -> Self {
         Self { world_state }
     }
-    pub fn get_world_state(&self) -> &'a WorldState {
-        self.world_state
+    pub fn get_world_state(&self) -> Rc<WorldState> {
+        Rc::clone(&self.world_state)
     }
 }
 
-impl<'a> PartialEq for WorldStateHeapWrapper<'a> {
+impl PartialEq for WorldStateHeapWrapper {
     fn eq(&self, other: &Self) -> bool {
         self.world_state.get_heuristic() == other.world_state.get_heuristic()
     }
 }
 
-impl<'a> Eq for WorldStateHeapWrapper<'a> {
+impl Eq for WorldStateHeapWrapper {
     fn assert_receiver_is_total_eq(&self) {}
 }
 
-impl<'a> PartialOrd for WorldStateHeapWrapper<'a> {
+impl PartialOrd for WorldStateHeapWrapper {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         let heuristics = (
             self.world_state.get_heuristic(),
@@ -311,7 +311,7 @@ impl<'a> PartialOrd for WorldStateHeapWrapper<'a> {
     }
 }
 
-impl<'a> Ord for WorldStateHeapWrapper<'a> {
+impl Ord for WorldStateHeapWrapper {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.partial_cmp(other)
             .expect("PartialOrd implementation for WorldStateHeapWrapper should not return None!")
@@ -546,26 +546,37 @@ mod world_state_heap_wrapper_test {
     fn test_world_state_heap_wrapper_maintains_expected_order() {
         let world_state_2: WorldStateResult = "1 1 2 2 right".try_into();
         let world_state_1: WorldStateResult = "0 0 3 3 right".try_into();
-        let world_state_5: WorldStateResult = "0 3 3 0 right".try_into();
+        let world_state_6: WorldStateResult = "0 3 3 0 right".try_into();
+        let world_state_5: WorldStateResult = "2 3 1 0 right".try_into();
         let world_state_3: WorldStateResult = "2 2 1 1 right".try_into();
         let world_state_4: WorldStateResult = "0 3 3 0 right".try_into();
-        let (world_state_1, world_state_2, world_state_3, world_state_4, world_state_5) = (
+        let (
+            world_state_1,
+            world_state_2,
+            world_state_3,
+            world_state_4,
+            world_state_5,
+            world_state_6,
+        ) = (
             world_state_1.unwrap(),
             world_state_2.unwrap(),
             world_state_3.unwrap(),
             world_state_4.unwrap(),
             world_state_5.unwrap(),
+            world_state_6.unwrap(),
         );
 
         let mut heap: BinaryHeap<Reverse<WorldStateHeapWrapper>> = BinaryHeap::new();
 
-        heap.push(Reverse(WorldStateHeapWrapper::new(&world_state_1)));
-        heap.push(Reverse(WorldStateHeapWrapper::new(&world_state_2)));
-        heap.push(Reverse(WorldStateHeapWrapper::new(&world_state_5)));
-        heap.push(Reverse(WorldStateHeapWrapper::new(&world_state_3)));
-        heap.push(Reverse(WorldStateHeapWrapper::new(&world_state_4)));
+        heap.push(Reverse(WorldStateHeapWrapper::new(Rc::new(world_state_1))));
+        heap.push(Reverse(WorldStateHeapWrapper::new(Rc::new(world_state_2))));
+        heap.push(Reverse(WorldStateHeapWrapper::new(Rc::new(world_state_5))));
+        heap.push(Reverse(WorldStateHeapWrapper::new(Rc::new(world_state_3))));
+        heap.push(Reverse(WorldStateHeapWrapper::new(Rc::new(world_state_4))));
+        heap.push(Reverse(WorldStateHeapWrapper::new(Rc::new(world_state_6))));
 
         let expected_order_vec = vec![
+            "2 3 1 0 right".to_string(),
             "0 3 3 0 right".to_string(),
             "0 3 3 0 right".to_string(),
             "2 2 1 1 right".to_string(),
@@ -575,7 +586,8 @@ mod world_state_heap_wrapper_test {
 
         expected_order_vec.into_iter().for_each(|expected| {
             if let Some(Reverse(ws_wrapper)) = heap.pop() {
-                let actual: String = ws_wrapper.get_world_state().into();
+                let actual: String = ws_wrapper.get_world_state().as_ref().into();
+                println!("{}", actual);
                 assert_eq!(expected, actual);
             }
         });

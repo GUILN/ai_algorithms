@@ -1,7 +1,9 @@
-use std::collections::{BinaryHeap, HashMap, VecDeque};
+use std::cmp::Reverse;
+use std::collections::{BinaryHeap, HashMap};
 use std::error::Error;
+use std::rc::Rc;
 
-use algoritmos_rust::{WorldState, WorldStateResult};
+use algoritmos_rust::{WorldState, WorldStateHeapWrapper, WorldStateResult};
 
 pub fn main() -> Result<(), Box<dyn Error>> {
     const INITIAL_STATE: &str = "0 0 3 3 right";
@@ -9,9 +11,8 @@ pub fn main() -> Result<(), Box<dyn Error>> {
     let initial_state = initial_state.expect("faulty state");
     let mut already_queued_states: HashMap<String, bool> = HashMap::new();
 
-    let mut next_states_to_visit: VecDeque<WorldState> = VecDeque::new();
-
-    // let mut next_states_to_visit_heap: BinaryHeap<WorldState> = BinaryHeap::new();
+    let mut next_states_to_visit_heap: BinaryHeap<Reverse<WorldStateHeapWrapper>> =
+        BinaryHeap::new();
 
     already_queued_states.insert(INITIAL_STATE.to_string(), true);
 
@@ -20,30 +21,31 @@ pub fn main() -> Result<(), Box<dyn Error>> {
         .into_iter()
         .map(|w_result| w_result.expect("faulty state"))
         .collect::<Vec<WorldState>>();
-    initial_child_states.sort_by(|a, b| return b.get_heuristic().cmp(&a.get_heuristic()));
 
     initial_child_states
         .into_iter()
         .for_each(|world_state_result| {
             let ref_world_state_result = &world_state_result;
             let world_state_str_representation: String = ref_world_state_result.into();
-            next_states_to_visit.push_front(world_state_result);
+            next_states_to_visit_heap.push(Reverse(WorldStateHeapWrapper::new(Rc::new(
+                world_state_result,
+            ))));
             already_queued_states.insert(world_state_str_representation, true);
         });
 
-    let solution_state: Option<WorldState> = loop {
-        if let Some(state_to_visit) = next_states_to_visit.pop_front() {
+    let solution_state: Option<Rc<WorldState>> = loop {
+        if let Some(Reverse(state_to_visit)) = next_states_to_visit_heap.pop() {
+            let state_to_visit = state_to_visit.get_world_state();
             if state_to_visit.is_solution() {
                 break Some(state_to_visit);
             } else if state_to_visit.is_game_over() {
                 continue;
             } else {
-                let mut child_states = state_to_visit
+                let child_states = state_to_visit
                     .get_child_states()
                     .into_iter()
                     .map(|w_result| w_result.expect("faulty state"))
                     .collect::<Vec<WorldState>>();
-                child_states.sort_by(|a, b| return b.get_heuristic().cmp(&a.get_heuristic()));
 
                 for child_world_state in child_states {
                     let ref_child_w_state = &child_world_state;
@@ -53,7 +55,9 @@ pub fn main() -> Result<(), Box<dyn Error>> {
                     if already_queued_states.contains_key(&world_state_str_representation) {
                         continue;
                     }
-                    next_states_to_visit.push_front(child_world_state);
+                    next_states_to_visit_heap.push(Reverse(WorldStateHeapWrapper::new(Rc::new(
+                        child_world_state,
+                    ))));
                     already_queued_states.insert(world_state_str_representation, true);
                 }
             }
