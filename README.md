@@ -38,8 +38,8 @@ make test
 
 ### Domínio
 Como o domínio era comum entre todos os algoritmos, optei por reutilizá-lo. ele pode ser encontrado [nesse módulo](./src/cannibals/) e está separado em:
-* `SideState`: O estado de cada lado da margem (quantos canibais, quantos missinários, tem ou não tem barco)
-* `WorldState`: O estado do jogo completo composto por 2 `SideState` (right e left).
+* `SideState`: O estado de cada lado da margem (quantos canibais, quantos missinários)
+* `WorldState`: O estado do jogo completo composto por 2 `SideState` (right e left) e em que lado o barco está.
 
 Esses módulos possuem também os testes e os comportamentos para identificar `gameover state`, `goal state`, gerar estados filhos, e retornar funções de custo e heurística.
 
