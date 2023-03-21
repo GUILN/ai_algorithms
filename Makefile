@@ -4,6 +4,9 @@ format:
 test:
 	cargo test
 
+build:
+	cargo build
+
 ## Run algorithms:
 run_all: run_bfs run_dfs run_greedy_best_first_search run_a_star
 
