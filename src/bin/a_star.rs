@@ -3,7 +3,9 @@ use std::collections::{BinaryHeap, HashMap};
 use std::error::Error;
 use std::rc::Rc;
 
-use algoritmos_rust::{WorldState, WorldStateHeapWrapper, WorldStateResult};
+use algoritmos_rust::{
+    WorldState, WorldStateHeapWrapper, WorldStateResult, WorldStateWrapperCostFunction,
+};
 
 pub fn main() -> Result<(), Box<dyn Error>> {
     const INITIAL_STATE: &str = "0 0 3 3 right";
@@ -16,7 +18,7 @@ pub fn main() -> Result<(), Box<dyn Error>> {
 
     already_queued_states.insert(INITIAL_STATE.to_string(), true);
 
-    let mut initial_child_states = initial_state
+    let initial_child_states = initial_state
         .get_child_states()
         .into_iter()
         .map(|w_result| w_result.expect("faulty state"))
@@ -27,9 +29,10 @@ pub fn main() -> Result<(), Box<dyn Error>> {
         .for_each(|world_state_result| {
             let ref_world_state_result = &world_state_result;
             let world_state_str_representation: String = ref_world_state_result.into();
-            next_states_to_visit_heap.push(Reverse(WorldStateHeapWrapper::new(Rc::new(
-                world_state_result,
-            ))));
+            next_states_to_visit_heap.push(Reverse(WorldStateHeapWrapper::new(
+                Rc::new(world_state_result),
+                WorldStateWrapperCostFunction::HeuristicPlusBranchCost,
+            )));
             already_queued_states.insert(world_state_str_representation, true);
         });
 
@@ -55,9 +58,10 @@ pub fn main() -> Result<(), Box<dyn Error>> {
                     if already_queued_states.contains_key(&world_state_str_representation) {
                         continue;
                     }
-                    next_states_to_visit_heap.push(Reverse(WorldStateHeapWrapper::new(Rc::new(
-                        child_world_state,
-                    ))));
+                    next_states_to_visit_heap.push(Reverse(WorldStateHeapWrapper::new(
+                        Rc::new(child_world_state),
+                        WorldStateWrapperCostFunction::HeuristicPlusBranchCost,
+                    )));
                     already_queued_states.insert(world_state_str_representation, true);
                 }
             }

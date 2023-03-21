@@ -5,6 +5,8 @@ test:
 	cargo test
 
 ## Run algorithms:
+run_all: run_bfs run_dfs run_greedy_best_first_search run_a_star
+
 run_bfs:
 	cargo run --bin bfs
 

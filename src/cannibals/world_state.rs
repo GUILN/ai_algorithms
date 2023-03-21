@@ -41,6 +41,7 @@ pub struct WorldState {
     pub right_state: SideState,
     pub boat_side: BoatSide,
     backtrack: String,
+    branch_cost: u8,
 }
 
 /// World state:
@@ -50,6 +51,7 @@ impl WorldState {
         right_state: SideState,
         boat_side: BoatSide,
         backtrack: String,
+        branch_cost: u8,
     ) -> Result<Self, WorldStateError> {
         let total_cannibals = left_state.cannibals + right_state.cannibals;
         let total_missionaries = left_state.missionaries + right_state.missionaries;
@@ -62,6 +64,7 @@ impl WorldState {
                 right_state,
                 boat_side,
                 backtrack: backtrack,
+                branch_cost: branch_cost,
             }),
         }
     }
@@ -90,6 +93,7 @@ impl WorldState {
                         ),
                         BoatSide::RightSide,
                         format!("{}|{}", self.backtrack, mov),
+                        self.branch_cost + 1,
                     );
                 })
                 .collect(),
@@ -113,6 +117,7 @@ impl WorldState {
                         ),
                         BoatSide::LeftSide,
                         format!("{}|{}", self.backtrack, mov),
+                        self.branch_cost + 1,
                     );
                 })
                 .collect(),
@@ -140,6 +145,12 @@ impl WorldState {
     /// ```
     pub fn get_heuristic(&self) -> u8 {
         3 - self.left_state.missionaries
+    }
+
+    /// [`get_branch_cost`]
+    /// returns the numeric cost to open the branch
+    pub fn get_branch_cost(&self) -> u8 {
+        self.branch_cost
     }
 
     /// [`get_step_by_step`]
@@ -207,6 +218,7 @@ impl TryFrom<&str> for WorldState {
             SideState::new(r_c.parse()?, r_m.parse()?),
             b.try_into()?,
             "root state".into(),
+            0,
         )?;
 
         Ok(world_state)
@@ -271,20 +283,30 @@ impl Display for WorldState {
 #[derive(Debug)]
 pub struct WorldStateHeapWrapper {
     world_state: Rc<WorldState>,
+    cost_function: WorldStateWrapperCostFunction,
 }
 
 impl WorldStateHeapWrapper {
-    pub fn new(world_state: Rc<WorldState>) -> Self {
-        Self { world_state }
+    pub fn new(world_state: Rc<WorldState>, cost_function: WorldStateWrapperCostFunction) -> Self {
+        Self {
+            world_state,
+            cost_function,
+        }
     }
     pub fn get_world_state(&self) -> Rc<WorldState> {
         Rc::clone(&self.world_state)
+    }
+    fn get_cost(&self) -> u8 {
+        match self.cost_function {
+            WorldStateWrapperCostFunction::OnlyHeuristic => self.world_state.get_heuristic(),
+            WorldStateWrapperCostFunction::HeuristicPlusBranchCost => self.world_state.get_heuristic() + self.world_state.get_branch_cost(),
+        }
     }
 }
 
 impl PartialEq for WorldStateHeapWrapper {
     fn eq(&self, other: &Self) -> bool {
-        self.world_state.get_heuristic() == other.world_state.get_heuristic()
+        self.get_cost() == other.get_cost()
     }
 }
 
@@ -295,8 +317,8 @@ impl Eq for WorldStateHeapWrapper {
 impl PartialOrd for WorldStateHeapWrapper {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         let heuristics = (
-            self.world_state.get_heuristic(),
-            other.world_state.get_heuristic(),
+            self.get_cost(),
+            other.get_cost(),
         );
 
         match heuristics {
@@ -316,6 +338,12 @@ impl Ord for WorldStateHeapWrapper {
         self.partial_cmp(other)
             .expect("PartialOrd implementation for WorldStateHeapWrapper should not return None!")
     }
+}
+
+#[derive(Debug)]
+pub enum WorldStateWrapperCostFunction {
+    OnlyHeuristic,
+    HeuristicPlusBranchCost,
 }
 
 #[non_exhaustive]
@@ -346,6 +374,7 @@ mod world_state_test {
             SideState::new(3, 2),
             BoatSide::LeftSide,
             "root state".to_string(),
+            0,
         )
         .unwrap_err();
         let wrong_n_of_cannibals = WorldState::new(
@@ -353,6 +382,7 @@ mod world_state_test {
             SideState::new(3, 1),
             BoatSide::RightSide,
             "root state".to_string(),
+            0,
         )
         .unwrap_err();
 
@@ -373,6 +403,7 @@ mod world_state_test {
             SideState::new(0, 3),
             BoatSide::LeftSide,
             "root state".to_string(),
+            0,
         )
         .unwrap();
 
@@ -392,6 +423,7 @@ mod world_state_test {
             SideState::new(2, 0),
             BoatSide::LeftSide,
             "root state".to_string(),
+            0,
         )
         .unwrap();
         let non_solution_world_state = WorldState::new(
@@ -399,6 +431,7 @@ mod world_state_test {
             SideState::new(2, 1),
             BoatSide::LeftSide,
             "root state".to_string(),
+            0,
         )
         .unwrap();
 
@@ -414,18 +447,21 @@ mod world_state_test {
                 SideState::new(2, 1),
                 BoatSide::LeftSide,
                 "root state".to_string(),
+                0,
             ),
             WorldState::new(
                 SideState::new(0, 1),
                 SideState::new(3, 2),
                 BoatSide::LeftSide,
                 "root state".to_string(),
+                0,
             ),
             WorldState::new(
                 SideState::new(2, 1),
                 SideState::new(1, 2),
                 BoatSide::LeftSide,
                 "root state".to_string(),
+                0,
             ),
         ];
         let world_non_game_over_states = vec![
@@ -434,18 +470,21 @@ mod world_state_test {
                 SideState::new(3, 3),
                 BoatSide::RightSide,
                 "root state".to_string(),
+                0,
             ),
             WorldState::new(
                 SideState::new(2, 2),
                 SideState::new(1, 1),
                 BoatSide::LeftSide,
                 "root state".to_string(),
+                0,
             ),
             WorldState::new(
                 SideState::new(0, 3),
                 SideState::new(3, 0),
                 BoatSide::LeftSide,
                 "root state".to_string(),
+                0,
             ),
         ];
 
@@ -568,12 +607,30 @@ mod world_state_heap_wrapper_test {
 
         let mut heap: BinaryHeap<Reverse<WorldStateHeapWrapper>> = BinaryHeap::new();
 
-        heap.push(Reverse(WorldStateHeapWrapper::new(Rc::new(world_state_1))));
-        heap.push(Reverse(WorldStateHeapWrapper::new(Rc::new(world_state_2))));
-        heap.push(Reverse(WorldStateHeapWrapper::new(Rc::new(world_state_5))));
-        heap.push(Reverse(WorldStateHeapWrapper::new(Rc::new(world_state_3))));
-        heap.push(Reverse(WorldStateHeapWrapper::new(Rc::new(world_state_4))));
-        heap.push(Reverse(WorldStateHeapWrapper::new(Rc::new(world_state_6))));
+        heap.push(Reverse(WorldStateHeapWrapper::new(
+            Rc::new(world_state_1),
+            WorldStateWrapperCostFunction::OnlyHeuristic,
+        )));
+        heap.push(Reverse(WorldStateHeapWrapper::new(
+            Rc::new(world_state_2),
+            WorldStateWrapperCostFunction::OnlyHeuristic,
+        )));
+        heap.push(Reverse(WorldStateHeapWrapper::new(
+            Rc::new(world_state_5),
+            WorldStateWrapperCostFunction::OnlyHeuristic,
+        )));
+        heap.push(Reverse(WorldStateHeapWrapper::new(
+            Rc::new(world_state_3),
+            WorldStateWrapperCostFunction::OnlyHeuristic,
+        )));
+        heap.push(Reverse(WorldStateHeapWrapper::new(
+            Rc::new(world_state_4),
+            WorldStateWrapperCostFunction::OnlyHeuristic,
+        )));
+        heap.push(Reverse(WorldStateHeapWrapper::new(
+            Rc::new(world_state_6),
+            WorldStateWrapperCostFunction::OnlyHeuristic,
+        )));
 
         let expected_order_vec = vec![
             "2 3 1 0 right".to_string(),
