@@ -4,11 +4,12 @@ use std::error::Error;
 use std::rc::Rc;
 
 use algoritmos_rust::{
-    WorldState, WorldStateHeapWrapper, WorldStateResult, WorldStateWrapperCostFunction,
+    WorldState, WorldStateHeapWrapper, WorldStateResult, WorldStateWrapperCostFunctionType,
 };
 
 pub fn main() -> Result<(), Box<dyn Error>> {
     const INITIAL_STATE: &str = "0 0 3 3 right";
+
     let initial_state: WorldStateResult = WorldState::try_from(INITIAL_STATE);
     let initial_state = initial_state.expect("faulty state");
     let mut already_queued_states: HashMap<String, bool> = HashMap::new();
@@ -31,13 +32,16 @@ pub fn main() -> Result<(), Box<dyn Error>> {
             let world_state_str_representation: String = ref_world_state_result.into();
             next_states_to_visit_heap.push(Reverse(WorldStateHeapWrapper::new(
                 Rc::new(world_state_result),
-                WorldStateWrapperCostFunction::HeuristicPlusBranchCost,
+                WorldStateWrapperCostFunctionType::HeuristicPlusBranchCost,
             )));
             already_queued_states.insert(world_state_str_representation, true);
         });
 
+    let mut visited_states = 0;
+
     let solution_state: Option<Rc<WorldState>> = loop {
         if let Some(Reverse(state_to_visit)) = next_states_to_visit_heap.pop() {
+            visited_states +=1;
             let state_to_visit = state_to_visit.get_world_state();
             if state_to_visit.is_solution() {
                 break Some(state_to_visit);
@@ -60,7 +64,7 @@ pub fn main() -> Result<(), Box<dyn Error>> {
                     }
                     next_states_to_visit_heap.push(Reverse(WorldStateHeapWrapper::new(
                         Rc::new(child_world_state),
-                        WorldStateWrapperCostFunction::HeuristicPlusBranchCost,
+                        WorldStateWrapperCostFunctionType::HeuristicPlusBranchCost,
                     )));
                     already_queued_states.insert(world_state_str_representation, true);
                 }
@@ -75,6 +79,7 @@ pub fn main() -> Result<(), Box<dyn Error>> {
         let step_by_step_vec = state.get_step_by_step_vec();
         let n_of_steps = step_by_step_vec.len() - 1;
 
+        println!("visited states: {}", visited_states);
         println!("number of steps: {}", n_of_steps);
         step_by_step_vec
             .into_iter()

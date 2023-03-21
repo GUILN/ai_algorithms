@@ -24,8 +24,10 @@ pub fn main() -> Result<(), Box<dyn Error>> {
             already_queued_states.insert(world_state_str_representation, true);
         });
 
+    let mut visited_states = 0;
     let solution_state: Option<WorldState> = loop {
         if let Some(state_to_visit) = next_states_to_visit.pop_front() {
+            visited_states += 1;
             if state_to_visit.is_solution() {
                 break Some(state_to_visit);
             } else if state_to_visit.is_game_over() {
@@ -54,6 +56,7 @@ pub fn main() -> Result<(), Box<dyn Error>> {
         let step_by_step_vec = state.get_step_by_step_vec();
         let n_of_steps = step_by_step_vec.len() - 1;
 
+        println!("visited states: {}", visited_states);
         println!("number of steps: {}", n_of_steps);
         step_by_step_vec
             .into_iter()

@@ -283,11 +283,11 @@ impl Display for WorldState {
 #[derive(Debug)]
 pub struct WorldStateHeapWrapper {
     world_state: Rc<WorldState>,
-    cost_function: WorldStateWrapperCostFunction,
+    cost_function: WorldStateWrapperCostFunctionType,
 }
 
 impl WorldStateHeapWrapper {
-    pub fn new(world_state: Rc<WorldState>, cost_function: WorldStateWrapperCostFunction) -> Self {
+    pub fn new(world_state: Rc<WorldState>, cost_function: WorldStateWrapperCostFunctionType) -> Self {
         Self {
             world_state,
             cost_function,
@@ -298,8 +298,8 @@ impl WorldStateHeapWrapper {
     }
     fn get_cost(&self) -> u8 {
         match self.cost_function {
-            WorldStateWrapperCostFunction::OnlyHeuristic => self.world_state.get_heuristic(),
-            WorldStateWrapperCostFunction::HeuristicPlusBranchCost => self.world_state.get_heuristic() + self.world_state.get_branch_cost(),
+            WorldStateWrapperCostFunctionType::OnlyHeuristic => self.world_state.get_heuristic(),
+            WorldStateWrapperCostFunctionType::HeuristicPlusBranchCost => self.world_state.get_heuristic() + self.world_state.get_branch_cost(),
         }
     }
 }
@@ -341,7 +341,7 @@ impl Ord for WorldStateHeapWrapper {
 }
 
 #[derive(Debug)]
-pub enum WorldStateWrapperCostFunction {
+pub enum WorldStateWrapperCostFunctionType {
     OnlyHeuristic,
     HeuristicPlusBranchCost,
 }
@@ -609,27 +609,27 @@ mod world_state_heap_wrapper_test {
 
         heap.push(Reverse(WorldStateHeapWrapper::new(
             Rc::new(world_state_1),
-            WorldStateWrapperCostFunction::OnlyHeuristic,
+            WorldStateWrapperCostFunctionType::OnlyHeuristic,
         )));
         heap.push(Reverse(WorldStateHeapWrapper::new(
             Rc::new(world_state_2),
-            WorldStateWrapperCostFunction::OnlyHeuristic,
+            WorldStateWrapperCostFunctionType::OnlyHeuristic,
         )));
         heap.push(Reverse(WorldStateHeapWrapper::new(
             Rc::new(world_state_5),
-            WorldStateWrapperCostFunction::OnlyHeuristic,
+            WorldStateWrapperCostFunctionType::OnlyHeuristic,
         )));
         heap.push(Reverse(WorldStateHeapWrapper::new(
             Rc::new(world_state_3),
-            WorldStateWrapperCostFunction::OnlyHeuristic,
+            WorldStateWrapperCostFunctionType::OnlyHeuristic,
         )));
         heap.push(Reverse(WorldStateHeapWrapper::new(
             Rc::new(world_state_4),
-            WorldStateWrapperCostFunction::OnlyHeuristic,
+            WorldStateWrapperCostFunctionType::OnlyHeuristic,
         )));
         heap.push(Reverse(WorldStateHeapWrapper::new(
             Rc::new(world_state_6),
-            WorldStateWrapperCostFunction::OnlyHeuristic,
+            WorldStateWrapperCostFunctionType::OnlyHeuristic,
         )));
 
         let expected_order_vec = vec![
