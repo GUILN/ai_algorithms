@@ -149,8 +149,12 @@ impl WorldState {
 
     /// [`get_branch_cost`]
     /// returns the numeric cost to open the branch
+    /// The branch cost here is being divided by 10 because we want to re-scale the branch cost to be used in
+    /// f function along with the heuristic. In order to not super estimate the cost of the new nodes, we
+    /// need to lower the scale for the branch cost in relation to the heuristic to make heuristic value more significant
+    /// in f function.
     pub fn get_branch_cost(&self) -> u8 {
-        self.branch_cost
+        self.branch_cost / 10
     }
 
     /// [`get_step_by_step`]
