@@ -8,66 +8,50 @@ use algoritmos_rust::{
 };
 
 pub fn main() -> Result<(), Box<dyn Error>> {
-    const INITIAL_STATE: &str = "0 0 3 3 right";
-
-    let initial_state: WorldStateResult = WorldState::try_from(INITIAL_STATE);
-    let initial_state = initial_state.expect("faulty state");
     let mut already_queued_states: HashMap<String, bool> = HashMap::new();
-
     let mut next_states_to_visit_heap: BinaryHeap<Reverse<WorldStateHeapWrapper>> =
         BinaryHeap::new();
+    const COST_FUNCTION_TYPE: WorldStateWrapperCostFunctionType =
+        WorldStateWrapperCostFunctionType::HeuristicPlusBranchCost;
 
+    const INITIAL_STATE: &str = "0 0 3 3 right";
+    let initial_state: WorldStateResult = WorldState::try_from(INITIAL_STATE);
+    let initial_state = initial_state.expect("faulty state");
+
+    next_states_to_visit_heap.push(Reverse(WorldStateHeapWrapper::new(
+        Rc::new(initial_state),
+        COST_FUNCTION_TYPE,
+    )));
     already_queued_states.insert(INITIAL_STATE.to_string(), true);
-
-    let initial_child_states = initial_state
-        .get_child_states()
-        .into_iter()
-        .map(|w_result| w_result.expect("faulty state"))
-        .collect::<Vec<WorldState>>();
-
-    initial_child_states
-        .into_iter()
-        .for_each(|world_state_result| {
-            let ref_world_state_result = &world_state_result;
-            let world_state_str_representation: String = ref_world_state_result.into();
-            next_states_to_visit_heap.push(Reverse(WorldStateHeapWrapper::new(
-                Rc::new(world_state_result),
-                WorldStateWrapperCostFunctionType::HeuristicPlusBranchCost,
-            )));
-            already_queued_states.insert(world_state_str_representation, true);
-        });
-
     let mut visited_states = 0;
 
     let solution_state: Option<Rc<WorldState>> = loop {
         if let Some(Reverse(state_to_visit)) = next_states_to_visit_heap.pop() {
+            let mut solution: Option<Rc<WorldState>> = None;
             visited_states += 1;
-            let state_to_visit = state_to_visit.get_world_state();
-            if state_to_visit.is_solution() {
-                break Some(state_to_visit);
-            } else if state_to_visit.is_game_over() {
-                continue;
-            } else {
-                let child_states = state_to_visit
-                    .get_child_states()
-                    .into_iter()
-                    .map(|w_result| w_result.expect("faulty state"))
-                    .collect::<Vec<WorldState>>();
-
-                for child_world_state in child_states {
-                    let ref_child_w_state = &child_world_state;
-                    let world_state_str_representation: String = ref_child_w_state.into();
-
-                    // Checks if the world state is already in the queue to be visited.
-                    if already_queued_states.contains_key(&world_state_str_representation) {
-                        continue;
-                    }
-                    next_states_to_visit_heap.push(Reverse(WorldStateHeapWrapper::new(
-                        Rc::new(child_world_state),
-                        WorldStateWrapperCostFunctionType::HeuristicPlusBranchCost,
-                    )));
-                    already_queued_states.insert(world_state_str_representation, true);
+            for child_world_state in state_to_visit.get_world_state().get_child_states() {
+                let child_world_state = child_world_state.expect("faulty state!");
+                let child_world_state = Rc::new(child_world_state);
+                if child_world_state.is_game_over() {
+                    continue;
+                } else if child_world_state.is_solution() {
+                    solution = Some(child_world_state);
+                    break;
                 }
+
+                let world_state_str_representation: String = child_world_state.as_ref().into();
+                // Checks if the world state is already in the queue to be visited.
+                if already_queued_states.contains_key(&world_state_str_representation) {
+                    continue;
+                }
+                next_states_to_visit_heap.push(Reverse(WorldStateHeapWrapper::new(
+                    Rc::clone(&child_world_state),
+                    COST_FUNCTION_TYPE,
+                )));
+                already_queued_states.insert(world_state_str_representation, true);
+            }
+            if solution != None {
+                break solution;
             }
         } else {
             break None;
