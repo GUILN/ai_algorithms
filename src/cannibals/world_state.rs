@@ -130,9 +130,11 @@ impl WorldState {
     /// # Example
     /// ```
     /// # use algoritmos_rust::cannibals::*;
-    /// let state: WorldStateResult = "0 0 3 3 right".try_into();
-    /// let state = state.unwrap();
-    /// assert_eq!(state.get_heuristic(), 3)
+    /// let state_right: WorldStateResult = "1 1 2 2 right".try_into();
+    /// let state_left: WorldStateResult = "1 1 2 2 left".try_into();
+    /// let (state_right, state_left) = (state_right.unwrap(), state_left.unwrap());
+    /// assert_eq!(state_right.get_heuristic(), 1.25);
+    /// assert_eq!(state_left.get_heuristic(), 2.0);
     /// ```
     ///
     /// # Example - Comparison
@@ -143,8 +145,16 @@ impl WorldState {
     /// let (state_1, state_2) = (state_1.unwrap(), state_2.unwrap());
     /// assert!(state_2.get_heuristic() < state_1.get_heuristic(), "expect state 2 to be closest to the goal state.");
     /// ```
-    pub fn get_heuristic(&self) -> u8 {
-        3 - self.left_state.missionaries
+    pub fn get_heuristic(&self) -> f32 {
+        let boat_right_side_bonus = if self.boat_side == BoatSide::RightSide && !self.is_solution()
+        {
+            1.5
+        } else {
+            0.0
+        };
+        (f32::from(self.right_state.cannibals) + f32::from(self.right_state.missionaries)
+            - boat_right_side_bonus)
+            / 2.0
     }
 
     /// [`get_branch_cost`]
@@ -153,8 +163,8 @@ impl WorldState {
     /// f function along with the heuristic. In order to not super estimate the cost of the new nodes, we
     /// need to lower the scale for the branch cost in relation to the heuristic to make heuristic value more significant
     /// in f function.
-    pub fn get_branch_cost(&self) -> u8 {
-        self.branch_cost / 10
+    pub fn get_branch_cost(&self) -> f32 {
+        f32::from(self.branch_cost) / 10.0
     }
 
     /// [`get_step_by_step`]
@@ -177,7 +187,7 @@ impl WorldState {
     }
 
     pub fn is_solution(&self) -> bool {
-        self.left_state.missionaries == 3 && !self.is_game_over()
+        self.left_state.missionaries == 3 && self.left_state.cannibals == 3 && !self.is_game_over()
     }
 
     pub fn is_game_over(&self) -> bool {
@@ -303,7 +313,7 @@ impl WorldStateHeapWrapper {
     pub fn get_world_state(&self) -> Rc<WorldState> {
         Rc::clone(&self.world_state)
     }
-    fn get_cost(&self) -> u8 {
+    fn get_cost(&self) -> f32 {
         match self.cost_function {
             WorldStateWrapperCostFunctionType::OnlyHeuristic => self.world_state.get_heuristic(),
             WorldStateWrapperCostFunctionType::HeuristicPlusBranchCost => {
@@ -425,8 +435,8 @@ mod world_state_test {
     #[test]
     fn world_is_solution_returns_expected_response() {
         let solution_world_state = WorldState::new(
-            SideState::new(1, 3),
-            SideState::new(2, 0),
+            SideState::new(3, 3),
+            SideState::new(0, 0),
             BoatSide::LeftSide,
             "root state".to_string(),
             0,
@@ -640,9 +650,9 @@ mod world_state_heap_wrapper_test {
 
         let expected_order_vec = vec![
             "2 3 1 0 right".to_string(),
-            "0 3 3 0 right".to_string(),
-            "0 3 3 0 right".to_string(),
             "2 2 1 1 right".to_string(),
+            "0 3 3 0 right".to_string(),
+            "0 3 3 0 right".to_string(),
             "1 1 2 2 right".to_string(),
             "0 0 3 3 right".to_string(),
         ];
